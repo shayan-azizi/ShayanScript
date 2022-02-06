@@ -1,0 +1,3 @@
+while True:
+    text = input("~ ")
+    
