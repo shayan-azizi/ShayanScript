@@ -1,19 +1,46 @@
 # Error | SUSY CLASS! :))
 class Error:
-    def __init__(self, error_name, details):
+    def __init__(self, pos_start, pos_end, error_name, details):
+        self.pos_start = pos_start
+        self.pos_end = pos_end
         self.error_name = error_name
         self.details = details
         
     def as_string (self):
         responce = f"{self.error_name}: {self.details}"
+        responce += f"File {self.pos_start.file_name}, line {self.pos_start.ln + 1}"
         return responce
 
 class IllegalCharError(Error):
     
-    def __init__(self, details):
-        super.__init__("Illegal Character", details)
+    def __init__(self, details, pos_start, pos_end):
+        super().__init__(pos_start, pos_end, "Illegal Character", details)
         
+        
+# Position
 
+class Position:
+    def __init__(self, idx, ln, col, file_name, file_text):
+        self.idx = idx
+        self.ln = ln
+        self.col = col
+        self.file_name = file_name
+        self.file_text = file_text
+        
+    def advance (self, current_char):
+        self.idx += 1
+        self.col += 1
+        
+        if current_char == "\n":
+            self.ln += 1
+        
+        return self
+
+    def copy (self):
+        return Position(self.idx, self.ln, self.col, self.file_name, self.file_text)
+        
+            
+        
 
 
 # Tokens
@@ -31,7 +58,7 @@ TT_RPAREN = "RPAEREN"
 
 
 class Token:
-    def __init__(self, type_, value):
+    def __init__(self, type_, value = None):
         self.type = type_
         self.value = value
         
@@ -42,17 +69,18 @@ class Token:
 # Lexer
 
 class Lexer:
-    def __init__(self, text):
+    def __init__(self, file_name,  text):
         
+        self.file_name = file_name
         self.text = text
-        self.pos = -1
+        self.pos = Position(-1, 0, -1, file_name, text)
         self.current_char = None
         self.advance()
     
     def advance (self):
         
-        self.pos += 1
-        self.current_char = self.text [pos] if self.pos < len(self.text) else None
+        self.pos.advance(self.current_char)
+        self.current_char = self.text [self.pos.idx] if self.pos.idx < len(self.text) else None
         
     def make_token (self):
         
@@ -91,14 +119,15 @@ class Lexer:
                 self.advance()
                 
             else:
+                pos_start = self.pos.copy()
                 char = self.current_char
                 self.advance()
                 
-                return [], IllegalCharError("'" + char + "'")
+                return [], IllegalCharError(pos_start, self.pos, '"' + char + '"')
             
         return tokens, None
     
-    def make_number ():
+    def make_number (self):
         num_str = ""
         dot_counter = 0
         
@@ -110,12 +139,24 @@ class Lexer:
                 num_str += '.'
             else:
                 num_str += self.current_char
+            self.advance()
         
         if dot_counter == 0:
             return Token(TT_INT, int(num_str)) 
         
         else:
             return Token(TT_FLOAT, float(num_str))
+
+
+# Run func
+
+def run (file_name, text):
+    lexer = Lexer(file_name, text)
+    tokens, error = lexer.make_token()
+    
+    return tokens, error
+    
+    
         
         
     
